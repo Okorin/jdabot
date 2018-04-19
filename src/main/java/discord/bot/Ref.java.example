@@ -1,0 +1,27 @@
+package discord.bot;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
+
+// long static list of env variables
+
+public class Ref {
+	public static final String token  = "";
+	public static final String botId  = "";
+	public static final String dbUser = "";
+	public static final String dbPass = "";
+	public static final String db	  = "";
+	public static final String prefix = "!";
+	
+	public static Connection connect() {
+		try {
+			return DriverManager.getConnection("jdbc:mariadb://localhost:3306/" + Ref.db, Ref.dbUser, Ref.dbPass);
+		} catch (SQLException ex) {
+			ex.printStackTrace();
+			return null;
+		}
+	}
+}
