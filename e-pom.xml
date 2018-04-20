@@ -167,9 +167,9 @@
 					<!-- JDBC connection parameters -->
 					<jdbc>
 						<driver>org.mariadb.jdbc.Driver</driver>
-						<url>jdbc:mariadb://localhost:3306/test</url>
-						<user>root</user>
-						<password>LFaj47ALbyPGcBqJlRdh</password>
+						<url>YOUR-DB-URI</url>
+						<user>DB-ADMIN</user>
+						<password>DB-PASS</password>
 					</jdbc>
 
 					<!-- Generator parameters -->

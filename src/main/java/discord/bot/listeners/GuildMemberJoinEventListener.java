@@ -1,7 +1,6 @@
-package discord.bot;
+package discord.bot.listeners;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -9,17 +8,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import net.dv8tion.jda.core.entities.Guild;
+import discord.bot.Helpers;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.core.hooks.ListenerAdapter;
 
-public class GuildEventsController extends ListenerAdapter {
+public class GuildMemberJoinEventListener extends ListenerAdapter {
 
 	private Connection conn;
 	private Map<String,TextChannel> landingChannels = new HashMap<>();
 
-	public GuildEventsController(Connection conn) {
+	public GuildMemberJoinEventListener(Connection conn) {
 		this.conn = conn;
 	}
 	
@@ -36,7 +35,7 @@ public class GuildEventsController extends ListenerAdapter {
 		String GuildId = e.getGuild().getId();
 		if (!this.landingChannels.containsKey(GuildId)) {
 			try {
-				this.conn = (this.conn.isClosed()) ? Ref.connect() : this.conn;
+				this.conn = (this.conn.isClosed()) ? Helpers.connect() : this.conn;
 				Statement stmnt = this.conn.createStatement();
 				ResultSet landingChannel = stmnt.executeQuery("SELECT landing_channel FROM guild_settings WHERE id = '" + GuildId + "'");
 				if (landingChannel.first() && landingChannel.getString("landing_channel") != null) {

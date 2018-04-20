@@ -1,4 +1,4 @@
-package discord.bot;
+package discord.bot.listeners;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -11,6 +11,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static generated_resources.Tables.*;
+
+import discord.bot.MessageReceivedCommand;
+import discord.bot.env;
+import discord.bot.factories.CommandFactory;
+import discord.bot.Helpers;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Role;
@@ -19,13 +25,17 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.core.hooks.ListenerAdapter;
 import net.dv8tion.jda.core.managers.GuildController;
 
-public class MessageCommandController extends ListenerAdapter {
+/**
+ * @author Okoratu
+ * Fires whenever a Message is sent to the bot in a channel it can see
+ */
+public class MessageReceivedEventListener extends ListenerAdapter {
 
 	// Command Prefix, take config, must not be re-registered
-	protected final String prefix = Ref.prefix;
+	protected final String prefix = env.prefix;
 
 	// Commands the Bot registers
-	private Map<String, Command> commands = new HashMap<>();
+	private Map<String, MessageReceivedCommand> commands = new HashMap<>();
 
 	// Access Control List
 	private Map<String, Integer> ACL = new HashMap<>();
@@ -37,19 +47,33 @@ public class MessageCommandController extends ListenerAdapter {
 
 	// For now this just registers stuff from the config
 	// if i end up having a db of sorts, these methods can fetch those from db
-	public MessageCommandController(Connection conn) {
+	/**
+	 * @param conn an open DB connection
+	 */
+	public MessageReceivedEventListener(Connection conn) {
 
 		this.conn = conn;
 
+		// Populate commands
 		registerCommands();
 
+		// Populate ACL
 		registerUsers();
 	}
 
+	@Override
+	public void onMessageReceived(MessageReceivedEvent event) {
+		this.handle(event);
+	}
+	
+	/**
+	 * @param e the Message Event
+	 * @return get Botchannel
+	 */
 	private TextChannel getBotChannelOrReadFromDb(MessageReceivedEvent e) {
 		String GuildId = e.getGuild().getId();
 		try {
-			this.conn = (conn.isClosed()) ? Ref.connect() : this.conn;
+			this.conn = (conn.isClosed()) ? Helpers.connect() : this.conn;
 
 			// On first call it won't contain shit for this so if you cant find it, read it
 			// from DB
@@ -78,10 +102,13 @@ public class MessageCommandController extends ListenerAdapter {
 	}
 
 	// be the message Handler
+	/**
+	 * @param e the Messageevent to handle
+	 */
 	private void handle(MessageReceivedEvent e) {
+		
 		// only process further Checks if the message Starts with the bot's prefix
 		String Message = e.getMessage().getContentRaw();
-		String GuildId = e.getGuild().getId();
 		TextChannel logChannel = this.getBotChannelOrReadFromDb(e);
 		if (Message.startsWith(this.prefix)) {
 			// UserId
@@ -121,7 +148,9 @@ public class MessageCommandController extends ListenerAdapter {
 	}
 
 	// OnLoad -> Register Base commands
-	// i'm not using the keys for anything yet, but could be
+	/**
+	 * tells the bot what commands it accepts in this context
+	 */
 	private void registerCommands() {
 
 		// Masskick Excluding Roles, args is a list of Rolenames to exclude
@@ -147,8 +176,8 @@ public class MessageCommandController extends ListenerAdapter {
 
 				// if the amount of matches for the member were empty, kick them
 				if (matches == 0 && // filter must match nothing
-				!member.getUser().getId().equals(Ref.botId) && // bot must not kick its own ass
-				guild.getMemberById(Ref.botId).canInteract(member)) // bot must be able to interact
+				!member.getUser().getId().equals(env.botId) && // bot must not kick its own ass
+				guild.getMemberById(env.botId).canInteract(member)) // bot must be able to interact
 				{
 
 					// Queue Kick event
@@ -161,94 +190,15 @@ public class MessageCommandController extends ListenerAdapter {
 			});
 
 		});
+		
+		// Factory two setter commands
+		commands.put("setLanding", CommandFactory.createChannelSetterCommand(GUILD_SETTINGS,GUILD_SETTINGS.LANDING_CHANNEL, GUILD_SETTINGS.ID));
+		commands.put("setLog", CommandFactory.createChannelSetterCommand(GUILD_SETTINGS, GUILD_SETTINGS.LOG_CHANNEL, GUILD_SETTINGS.ID));
 
-		commands.put("setLanding", (event, args) -> {
-			try {
-				this.conn = (this.conn.isClosed()) ? Ref.connect() : this.conn;
-
-				System.out.println(args.get(0));
-				String sane_channel = "";
-				if (args.get(0).length() > 3) {
-					sane_channel = args.get(0).substring(2, args.get(0).length()-1);
-				} else {
-					event.getChannel().sendMessage("Try again with a proper argument").queue();
-					return;
-				}
-				try {
-					event.getGuild().getTextChannelById(sane_channel);
-				} catch (Exception exc) {
-					event.getChannel().sendMessage("Try again with a proper argument").queue();
-					return;
-				}
-
-				Statement stmnt = this.conn.createStatement();
-
-				ResultSet res = stmnt.executeQuery(
-						"SELECT landing_channel FROM guild_settings WHERE id = '" + event.getGuild().getId() + "'");
-				if (res.first()) {
-					System.out.println("update");
-					stmnt.execute("UPDATE guild_settings set landing_channel = \"" + sane_channel + "\""
-							+ " WHERE id = \"" + event.getGuild().getId() + "\"");
-				} else {
-					System.out.println("insert");
-					stmnt.execute("insert into guild_settings (id, landing_channel) values (\"" + event.getGuild().getId()
-							+ "\", \"" + sane_channel + "\")");
-				}
-				stmnt.close();
-
-				this.conn.close();
-			} catch (SQLException e4) {
-				e4.printStackTrace();
-			}
-		});
-		commands.put("setLog", (event, args) -> {
-			try {
-				this.conn = (this.conn.isClosed()) ? Ref.connect() : this.conn;
-
-				System.out.println(args.get(0));
-				String sane_channel = "";
-				if (args.get(0).length() > 3) {
-					sane_channel = args.get(0).substring(2, args.get(0).length()-1);
-				} else {
-					event.getChannel().sendMessage("Try again with a proper argument").queue();
-					return;
-				}
-				try {
-					event.getGuild().getTextChannelById(sane_channel);
-				} catch (Exception exc) {
-					event.getChannel().sendMessage("Try again with a proper argument").queue();
-					return;
-				}
-
-				Statement stmnt = this.conn.createStatement();
-
-				ResultSet res = stmnt.executeQuery(
-						"SELECT log_channel FROM guild_settings WHERE id = '" + event.getGuild().getId() + "'");
-				if (res.first()) {
-					System.out.println("update");
-					stmnt.execute("UPDATE guild_settings set log_channel = \"" + sane_channel + "\""
-							+ " WHERE id = \"" + event.getGuild().getId() + "\"");
-				} else {
-					System.out.println("insert");
-					stmnt.execute("insert into guild_settings (id, log_channel) values (\"" + event.getGuild().getId()
-							+ "\", \"" + sane_channel + "\")");
-				}
-				stmnt.close();
-
-				this.conn.close();
-			} catch (SQLException e4) {
-				e4.printStackTrace();
-			}
-		});
-
+		// Debug to console
 		commands.put("getParms", (event, args) -> {
 		  System.out.println(this.getBotChannelOrReadFromDb(event));
 		});
-	}
-
-	@Override
-	public void onMessageReceived(MessageReceivedEvent event) {
-		this.handle(event);
 	}
 
 	// OnLoad -> Register Users Authorized to use commands
