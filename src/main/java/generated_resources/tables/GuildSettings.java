@@ -31,7 +31,7 @@ import org.jooq.impl.TableImpl;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class GuildSettings extends TableImpl<GuildSettingsRecord> {
 
-    private static final long serialVersionUID = 95799120;
+    private static final long serialVersionUID = -736750150;
 
     /**
      * The reference instance of <code>test.guild_settings</code>
@@ -54,12 +54,12 @@ public class GuildSettings extends TableImpl<GuildSettingsRecord> {
     /**
      * The column <code>test.guild_settings.landing_channel</code>.
      */
-    public final TableField<GuildSettingsRecord, String> LANDING_CHANNEL = createField("landing_channel", org.jooq.impl.SQLDataType.VARCHAR(22).defaultValue(org.jooq.impl.DSL.field("NULL", org.jooq.impl.SQLDataType.VARCHAR)), this, "");
+    public final TableField<GuildSettingsRecord, String> LANDING_CHANNEL = createField("landing_channel", org.jooq.impl.SQLDataType.VARCHAR(22), this, "");
 
     /**
      * The column <code>test.guild_settings.log_channel</code>.
      */
-    public final TableField<GuildSettingsRecord, String> LOG_CHANNEL = createField("log_channel", org.jooq.impl.SQLDataType.VARCHAR(22).defaultValue(org.jooq.impl.DSL.field("NULL", org.jooq.impl.SQLDataType.VARCHAR)), this, "");
+    public final TableField<GuildSettingsRecord, String> LOG_CHANNEL = createField("log_channel", org.jooq.impl.SQLDataType.VARCHAR(22), this, "");
 
     /**
      * Create a <code>test.guild_settings</code> table reference

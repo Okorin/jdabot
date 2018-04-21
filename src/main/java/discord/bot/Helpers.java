@@ -14,7 +14,7 @@ public class Helpers {
 	 */
 	public static Connection connect() {
 		try {
-			return DriverManager.getConnection("jdbc:mariadb://localhost:3306/" + env.db, env.dbUser, env.dbPass);
+			return DriverManager.getConnection("jdbc:mysql://localhost:3307/" + env.db + "?useSSL=false", env.dbUser, env.dbPass);
 		} catch (SQLException ex) {
 			ex.printStackTrace();
 			return null;

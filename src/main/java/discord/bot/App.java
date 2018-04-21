@@ -3,7 +3,6 @@ package discord.bot;
 
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 
 import discord.bot.listeners.GuildMemberJoinEventListener;
 import discord.bot.listeners.MessageReceivedEventListener;
@@ -21,7 +20,7 @@ public class App
 	
     public static void main( String[] args ) throws Exception
     {
-    	 try (Connection conn = DriverManager.getConnection("jdbc:mariadb://localhost:3306/" + env.db, env.dbUser, env.dbPass)) {
+    	 try (Connection conn = Helpers.connect()) {
 
     		// Initialize
     	    JDA jda = new JDABuilder(AccountType.BOT)
