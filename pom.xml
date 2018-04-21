@@ -21,11 +21,13 @@
 			<version>3.8.1</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
 		<dependency>
-			<groupId>org.mariadb.jdbc</groupId>
-			<artifactId>mariadb-java-client</artifactId>
-			<version>2.1.2</version>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>8.0.11</version>
 		</dependency>
+
 		<dependency>
 			<groupId>net.dv8tion</groupId>
 			<artifactId>JDA</artifactId>
@@ -120,9 +122,9 @@
 					database -->
 				<dependencies>
 					<dependency>
-						<groupId>org.mariadb.jdbc</groupId>
-						<artifactId>mariadb-java-client</artifactId>
-						<version>2.1.2</version>
+						<groupId>mysql</groupId>
+						<artifactId>mysql-connector-java</artifactId>
+						<version>8.0.11</version>
 					</dependency>
 					<!-- https://mvnrepository.com/artifact/javax.activation/activation -->
 					<dependency>
@@ -166,16 +168,16 @@
 					</compilerArgs>
 					<!-- JDBC connection parameters -->
 					<jdbc>
-						<driver>org.mariadb.jdbc.Driver</driver>
-						<url>jdbc:mariadb://localhost:3306/test</url>
+						<driver>com.mysql.jdbc.Driver</driver>
+						<url>jdbc:mysql://localhost:3307/test</url>
 						<user>root</user>
-						<password>LFaj47ALbyPGcBqJlRdh</password>
+						<password>r;X7Be/nRL@dUS372_A~</password>
 					</jdbc>
 
 					<!-- Generator parameters -->
 					<generator>
 						<database>
-							<name>org.jooq.util.mariadb.MariaDBDatabase</name>
+							<name>org.jooq.util.mysql.MySQLDatabase</name>
 							<includes>.*</includes>
 							<excludes></excludes>
 							<!-- In case your database supports catalogs, e.g. SQL Server: <inputCatalog>public</inputCatalog> -->
