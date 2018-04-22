@@ -138,11 +138,8 @@ public class MessageReceivedEventListener extends DiscordGuildListenerAdapter {
 		// Factory two setter commands
 		commands.put("setLanding", handler.createChannelSetterCommand(GUILD_SETTINGS,GUILD_SETTINGS.LANDING_CHANNEL, GUILD_SETTINGS.ID));
 		commands.put("setLog", handler.createChannelSetterCommand(GUILD_SETTINGS, GUILD_SETTINGS.LOG_CHANNEL,GUILD_SETTINGS.ID));
-				
-		// Debug to console
-		commands.put("getParms", (event, args) -> {
-			this.getChannelOrReadDb(event,this.botLogChannels, GUILD_SETTINGS, GUILD_SETTINGS.LOG_CHANNEL, GUILD_SETTINGS.ID);
-		});
+		
+		commands.put("getRoles", handler.getRoles());
 		
 		publicCommands.put("ping", handler.ping());
 	}
