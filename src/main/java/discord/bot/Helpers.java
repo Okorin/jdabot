@@ -14,7 +14,7 @@ public class Helpers {
 	 */
 	public static Connection connect() {
 		try {
-			return DriverManager.getConnection("jdbc:mysql://localhost:3307/" + env.db + "?useSSL=false", env.dbUser, env.dbPass);
+			return DriverManager.getConnection("jdbc:"+env.driver+"://"+ env.server +":"+env.port+"/" + env.db + "?useSSL=false", env.dbUser, env.dbPass);
 		} catch (SQLException ex) {
 			ex.printStackTrace();
 			return null;

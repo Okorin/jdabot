@@ -29,7 +29,7 @@ public class App
     	    
     	    // Add Event Listeners
     	    jda.addEventListener(new MessageReceivedEventListener(conn)); // Handle Messages in channels the bot can read
-        	jda.addEventListener(new GuildMemberJoinEventListener(conn)); // Handle New Members joined
+        	jda.addEventListener(new GuildMemberJoinEventListener()); // Handle New Members joined
     		 
          }
 

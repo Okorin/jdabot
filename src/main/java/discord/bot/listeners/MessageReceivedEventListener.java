@@ -9,33 +9,30 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+
+
+import org.jooq.conf.ParamType;
 
 import static generated_resources.Tables.*;
 
 import discord.bot.MessageReceivedCommand;
 import discord.bot.env;
-import discord.bot.factories.CommandFactory;
-import discord.bot.Helpers;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Role;
+import discord.bot.commands.CommandHandler;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.core.hooks.ListenerAdapter;
-import net.dv8tion.jda.core.managers.GuildController;
 
 /**
- * @author Okoratu
- * Fires whenever a Message is sent to the bot in a channel it can see
+ * @author Okoratu Fires whenever a Message is sent to the bot in a channel it
+ *         can see
  */
-public class MessageReceivedEventListener extends ListenerAdapter {
+public class MessageReceivedEventListener extends DiscordGuildListenerAdapter {
 
 	// Command Prefix, take config, must not be re-registered
 	protected final String prefix = env.prefix;
 
 	// Commands the Bot registers
 	private Map<String, MessageReceivedCommand> commands = new HashMap<>();
+	private Map<String, MessageReceivedCommand> publicCommands = new HashMap<>();
 
 	// Access Control List
 	private Map<String, Integer> ACL = new HashMap<>();
@@ -48,7 +45,8 @@ public class MessageReceivedEventListener extends ListenerAdapter {
 	// For now this just registers stuff from the config
 	// if i end up having a db of sorts, these methods can fetch those from db
 	/**
-	 * @param conn an open DB connection
+	 * @param conn
+	 *            an open DB connection
 	 */
 	public MessageReceivedEventListener(Connection conn) {
 
@@ -65,64 +63,34 @@ public class MessageReceivedEventListener extends ListenerAdapter {
 	public void onMessageReceived(MessageReceivedEvent event) {
 		this.handle(event);
 	}
-	
-	/**
-	 * @param e the Message Event
-	 * @return get Botchannel
-	 */
-	private TextChannel getBotChannelOrReadFromDb(MessageReceivedEvent e) {
-		String GuildId = e.getGuild().getId();
-		try {
-			this.conn = (conn.isClosed()) ? Helpers.connect() : this.conn;
-
-			// On first call it won't contain shit for this so if you cant find it, read it
-			// from DB
-			if (!this.botLogChannels.containsKey(GuildId)) {
-				Statement stmnt = this.conn.createStatement();
-				ResultSet botLog = stmnt.executeQuery("SELECT log_channel FROM guild_settings WHERE id = \"" + GuildId + "\"");
-					if (botLog.first() && botLog.getString("log_channel") != null) {
-						System.out.println("condition tru");
-						System.out.println(botLog.getString("log_channel"));
-						System.out.println(GuildId);
-						this.botLogChannels.put(GuildId, e.getGuild().getTextChannelById(botLog.getString("log_channel")));
-						System.out.println((e.getGuild().getTextChannelById(botLog.getString("log_channel"))));
-					} else {
-						System.out.println("condition false");
-						this.botLogChannels.put(GuildId, null);
-					}
-				stmnt.close();
-			}
-
-			conn.close();
-			return this.botLogChannels.get(GuildId);
-			
-		} catch (SQLException excp) {
-			return null;
-		}
-	}
 
 	// be the message Handler
 	/**
-	 * @param e the Messageevent to handle
+	 * @param e
+	 *            the Messageevent to handle
 	 */
 	private void handle(MessageReceivedEvent e) {
-		
+
 		// only process further Checks if the message Starts with the bot's prefix
 		String Message = e.getMessage().getContentRaw();
-		TextChannel logChannel = this.getBotChannelOrReadFromDb(e);
+		TextChannel logChannel = this.getChannelOrReadDb(e, this.botLogChannels, GUILD_SETTINGS, GUILD_SETTINGS.LOG_CHANNEL, GUILD_SETTINGS.ID); 
 		if (Message.startsWith(this.prefix)) {
 			// UserId
 			String uId = e.getAuthor().getId();
+			// relevant to execute.
+			String[] enteredArguments = Message.split(" ");
 
-			// AuthorityCheck the user
-			if (this.ACL.containsKey(uId)) {
-
-				// Message is only processed further if it contains something potentially
-				// relevant to execute.
-				String[] enteredArguments = Message.split(" ");
-
-				// needing the command later
-				String commandStr = enteredArguments[0].substring(this.prefix.length());
+			// needing the command later
+			String commandStr = enteredArguments[0].substring(this.prefix.length());
+			
+			// the command is public
+			if (this.publicCommands.containsKey(commandStr)) { 
+				List<String> pubArgs = new ArrayList<>(Arrays.asList(enteredArguments));
+				
+				pubArgs.remove(0);
+				
+				this.publicCommands.get(commandStr).run(e, pubArgs);
+			} else if (this.ACL.containsKey(uId)) { // the command isnt public so maybe the user is authorized
 
 				// The first enteredArgument minus the prefix is the command we check against
 				if (this.commands.containsKey(commandStr)) {
@@ -137,10 +105,12 @@ public class MessageReceivedEventListener extends ListenerAdapter {
 					this.commands.get(commandStr).run(e, args);
 				}
 
-			} else {
-				if (logChannel != null)
+			} else { // the command isn't public and the user isn't authorized
+				System.out.println(Message.substring(env.prefix.length(), Message.length()));
+				
+				if (logChannel != null && commands.containsKey(commandStr))
 					logChannel.sendMessage(
-							"unauthorized user tried to issue " + Message.split(" ")[0].substring(this.prefix.length()))
+							"Unauthorized user " + e.getAuthor().getAsMention() + " tried to issue " + Message.split(" ")[0].substring(this.prefix.length()))
 							.queue();
 			}
 
@@ -152,63 +122,41 @@ public class MessageReceivedEventListener extends ListenerAdapter {
 	 * tells the bot what commands it accepts in this context
 	 */
 	private void registerCommands() {
+		
+		// The command handler also rate public commands
+		CommandHandler handler = new CommandHandler();
 
 		// Masskick Excluding Roles, args is a list of Rolenames to exclude
-		commands.put("massKickExcluding", (event, args) -> {
-			// the guild the message is in
-			System.out.print("masskickran");
-			Guild guild = event.getGuild();
-			GuildController controller = guild.getController();
-			TextChannel logChannel = this.getBotChannelOrReadFromDb(event);
-
-			// Members of the guild
-			List<Member> members = guild.getMembers();
-
-			// Check all members
-			members.forEach(member -> {
-
-				// Roles of each member
-				List<Role> memberRoles = member.getRoles();
-
-				// Filter those roles against the arguments supplied to the command
-				Long matches = memberRoles.stream().filter(role -> args.contains(role.getName()))
-						.collect(Collectors.counting());
-
-				// if the amount of matches for the member were empty, kick them
-				if (matches == 0 && // filter must match nothing
-				!member.getUser().getId().equals(env.botId) && // bot must not kick its own ass
-				guild.getMemberById(env.botId).canInteract(member)) // bot must be able to interact
-				{
-
-					// Queue Kick event
-					controller.kick(member).queue();
-					// Log this action
-					if (logChannel != null)
-						logChannel.sendMessage("Attempted pruning of " + member.getEffectiveName()).queue();
-				}
-
-			});
-
-		});
+		commands.put("massKickExcluding", handler.massKick(true));
 		
-		// Factory two setter commands
-		commands.put("setLanding", CommandFactory.createChannelSetterCommand(GUILD_SETTINGS,GUILD_SETTINGS.LANDING_CHANNEL, GUILD_SETTINGS.ID));
-		commands.put("setLog", CommandFactory.createChannelSetterCommand(GUILD_SETTINGS, GUILD_SETTINGS.LOG_CHANNEL, GUILD_SETTINGS.ID));
+		// Masskick including is the inverse
+		commands.put("massKickRoles", handler.massKick(false));
+		
+		// Kickmembers expects a list of members as mentions
+		commands.put("kickMembers", handler.kickMembers());
 
+		// Factory two setter commands
+		commands.put("setLanding", handler.createChannelSetterCommand(GUILD_SETTINGS,GUILD_SETTINGS.LANDING_CHANNEL, GUILD_SETTINGS.ID));
+		commands.put("setLog", handler.createChannelSetterCommand(GUILD_SETTINGS, GUILD_SETTINGS.LOG_CHANNEL,GUILD_SETTINGS.ID));
+				
 		// Debug to console
 		commands.put("getParms", (event, args) -> {
-		  System.out.println(this.getBotChannelOrReadFromDb(event));
+			this.getChannelOrReadDb(event,this.botLogChannels, GUILD_SETTINGS, GUILD_SETTINGS.LOG_CHANNEL, GUILD_SETTINGS.ID);
 		});
+		
+		publicCommands.put("ping", handler.ping());
 	}
 
 	// OnLoad -> Register Users Authorized to use commands
 	private void registerUsers() {
 		int i = 1;
 		try (Statement stmnt = this.conn.createStatement()) {
-			ResultSet admins = stmnt.executeQuery("select uId from admin_users where 1");
+			ResultSet admins = stmnt.executeQuery(env.SQL.select(ADMIN_USERS.UID)
+														 .from(ADMIN_USERS)
+														 .getSQL(ParamType.INLINED));
 			while (admins.next()) {
 
-				this.ACL.put(admins.getString("uId"), i++);
+				this.ACL.put(admins.getString(ADMIN_USERS.UID.getName()), i++);
 			}
 			stmnt.close();
 		} catch (SQLException ex) {
