@@ -140,7 +140,10 @@ public class MessageReceivedEventListener extends DiscordGuildListenerAdapter {
 		commands.put("setLog", handler.createChannelSetterCommand(GUILD_SETTINGS, GUILD_SETTINGS.LOG_CHANNEL,GUILD_SETTINGS.ID));
 		
 		commands.put("getRoles", handler.getRoles());
-		
+		commands.put("getAsMentionIfRoles", handler.getUsersIfRoles("mentions"));
+		commands.put("getAsUsernameIfRoles", handler.getUsersIfRoles("usernames"));
+		commands.put("getAsFullTagIfRoles", handler.getUsersIfRoles("fullyQualified"));
+		commands.put("getAsNicknameIfRoles", handler.getUsersIfRoles("nicknames"));
 		publicCommands.put("ping", handler.ping());
 	}
 
